@@ -1,7 +1,8 @@
 "use strict";
 var hareactive_1 = require("@funkia/hareactive");
 var src_1 = require("../../src");
-var span = src_1.elements.span, input = src_1.elements.input, div = src_1.elements.div, svg = src_1.elements.svg, circle = src_1.elements.circle, line = src_1.elements.line, svgText = src_1.elements.svgText, g = src_1.elements.g, foreignObject = src_1.elements.foreignObject;
+var jabz_1 = require("@funkia/jabz");
+var span = src_1.elements.span, input = src_1.elements.input, div = src_1.elements.div, svg = src_1.elements.svg, circle = src_1.elements.circle, line = src_1.elements.line, svgText = src_1.elements.svgText, g = src_1.elements.g, foreignObject = src_1.elements.foreignObject, rect = src_1.elements.rect;
 function liftNow(now) {
     return src_1.modelView(function () { return now; }, function () { return src_1.emptyComponent; })();
 }
@@ -63,25 +64,35 @@ var timeline = src_1.fgo(function (width, height, fontSize) {
         "stroke-width": 0.3
     });
 });
+// const transverse = streams => lift((...args) => [...args], ...streams)
+var combine = function (streamA, streamB) { return jabz_1.lift(function (a, b) { return [a, b]; }, streamA, streamB); };
 var fontSize = 40;
-var marble = function (x, y, value) {
-    var s = JSON.stringify(value, null, '\n');
-    var lines = s.split("\n").length;
-    return g({
-        transform: "translate(" + x + ", " + y + ")"
+var marble = src_1.fgo(function (x, y, value, events, index) {
+    var jsonV = value === undefined ? "undefined" : JSON.stringify(value);
+    var s = jsonV.substring(0, 3) + (jsonV.length > 3 ? ".." : "");
+    var xOffset = combine((yield liftNow(hareactive_1.sample(hareactive_1.timeFrom))), events).map(function (_a) {
+        var t = _a[0], es = _a[1];
+        return index + 1 === es.length ? t / 30 : 33;
+    });
+    yield g({
+        transform: "translate(" + x + ", " + (y - 5) + ")"
     }, [
-        circle({
-            r: fontSize / 1.8,
-            fill: "lightblue"
+        rect({
+            width: 1,
+            height: 10
         }),
         foreignObject({
-            x: -15,
-            y: -15
-        }, div({ style: {
-                "font-size": 20 / lines + "px"
-            } }, s))
+            // x: xOffset.map(xOffset => 1-(2*s.length) + xOffset),
+            x: xOffset.map(function (xOffset) { return 1 - (2 * s.length) + xOffset; }),
+            y: -13
+        }, div({
+            style: {
+                "font-size": "10px",
+                "font-family": "monospace"
+            }
+        }, s))
     ]);
-};
+});
 var visualizeStream = src_1.fgo(function (stream, width, y) {
     var height = 100;
     var allEvents = yield streamToList(stream);
@@ -89,15 +100,28 @@ var visualizeStream = src_1.fgo(function (stream, width, y) {
         transform: "translate(0, " + y + ")"
     }, [
         yield timeline(width, height, fontSize),
-        src_1.list(function (e) { return marble((1 + e.index) * fontSize * 2, height / 2, e.value); }, allEvents, function (x) { return x.index; })
+        src_1.list(function (e) { return marble((1 + e.index) * fontSize * 2, height / 2, e.value, allEvents, e.index); }, allEvents, function (x) { return x.index; })
     ]);
 });
-var visualizePushBehavior = src_1.fgo(function (stream, width, y) {
+var visualizePushBehavior = src_1.fgo(function (behavior, width, y) {
+    var height = 100;
+    var allEvents = yield streamToList(hareactive_1.changes(stream));
+    var offsetXF = (yield liftNow(hareactive_1.sample(transverse(hareactive_1.timeFrom, allEvents))))
+        .map(function (_a) {
+        var t = _a[0], events = _a[1];
+        return (function (i) { return i === event.length ? (t / 30) : 0; });
+    });
+    yield g({
+        transform: "translate(0, " + y + ")"
+    }, [
+        yield timeline(width, height, fontSize),
+        src_1.list(function (e) { return marble((1 + e.index) * fontSize * 2, height / 2, e.value, allEvents, e.index); }, allEvents, function (x) { return x.index; })
+    ]);
 });
 var s = hareactive_1.sinkStream();
 var i = 0;
-var values = [0, { a: 1 }, { a: 1, b: "a really long string that keeps going" }, { a: 1, b: 2, c: 3, y: 4, d: 5, e: 6, f: 7 }];
-setInterval(function () { return s.push(values[i++] || i); }, 1000);
+var values = [0, { a: 1 }, ["sd", 3], null, undefined, "string", { a: 1, b: "a really long string that keeps going" }, { a: 1, b: 2, c: 4, y: 4, d: 5, e: 6, f: 7 }];
+setInterval(function () { return s.push(i > values.length - 1 ? i++ : values[i++]); }, 1000);
 var b = hareactive_1.sinkBehavior("starting");
 setInterval(function () { return b.push(i); }, 1000);
 var app = visualize(s, window.innerWidth - 20, window.innerHeight - 30);
