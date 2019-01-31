@@ -1,11 +1,10 @@
-import { map, Now, Behavior, sinkStream, Now, scan, sample, stepper, timeFrom } from "@funkia/hareactive";
+import { map, Now, Behavior, sinkStream, scan, sample, stepper, timeFrom } from "@funkia/hareactive";
 import { elements, modelView, runComponent, emptyComponent, go, fgo, list, loop } from "../../src";
 const { span, input, div, svg, circle, line, svgText, g } = elements;
 
 function liftNow(now) {
   return modelView(() => now, () => emptyComponent)();
 }
-
 
 const visualize = (stream, attrs) => loop(
   ({mousedown, mousemove, keydown}) =>
@@ -20,9 +19,8 @@ const visualize = (stream, attrs) => loop(
           )
         )
       );
-      
-
-      const fontSize = 40
+    
+      const fontSize: number = 40
       
       
       // click and drag based offset
@@ -69,7 +67,7 @@ const visualize = (stream, attrs) => loop(
     
       const {
         mousedown: mousedown_, 
-        mousemove: mousemove_
+        mousemove: mousemove_,
         keydown: keydown_
       } = yield svg({ 
         width,
