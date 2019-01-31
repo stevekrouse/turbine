@@ -7,7 +7,7 @@
     "counters": "parcel counters/index.html",
     "continuous-time": "parcel continuous-time/index.html",
     "fahrenheit-celsius": "parcel fahrenheit-celsius/index.html",
-    "simple": "parcel simple/index.html --port $PORT",
+    "simple": "parcel serve simple/index.html --port $PORT",
     "todo": "parcel todo/index.html",
     "zip-codes": "parcel zip-codes/index.html",
     "drag": "parcel drag/index.html",
