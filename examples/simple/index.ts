@@ -1,6 +1,7 @@
-import { map, Now, Behavior, sinkStream, scan, sample, stepper, timeFrom, changes, sinkBehavior } from "@funkia/hareactive";
+import { map, Now, Behavior, sinkStream, scan, sample, stepper, timeFrom, changes, sinkBehavior,  } from "@funkia/hareactive";
 import { elements, modelView, runComponent, emptyComponent, go, fgo, list, loop } from "../../src";
-const { span, input, div, svg, circle, line, svgText, g, foreignObject } = elements;
+import { lift } from "@funkia/jabz";
+const { span, input, div, svg, circle, line, svgText, g, foreignObject, rect } = elements;
 
 function liftNow(now) {
   return modelView(() => now, () => emptyComponent)();
@@ -69,59 +70,91 @@ const timeline = fgo(function*(width, height, fontSize) {
   })
 })
 
+// const transverse = streams => lift((...args) => [...args], ...streams)
+const combine = (streamA, streamB) => lift((a, b)=>[a,b], streamA, streamB)
+
 const fontSize = 40
-const marble = (x, y, value) => {
-  const s = JSON.stringify(value, null, '\n')
-  const lines = s.split("\n").length
-  return g({
-      transform: `translate(${x}, ${y})`,
+const marble = fgo(function*(x, y, value, events, index) {
+  const jsonV = value === undefined ? "undefined" : JSON.stringify(value) 
+  const s = jsonV.substring(0, 3) + (jsonV.length > 3 ? ".." : "");
+  
+  const xOffset = combine((yield liftNow(sample(timeFrom))), events).map(([t,es]) => index + 1 === es.length ? t/30 : 33)
+  
+  yield g({
+      transform: `translate(${x}, ${y-5})`,
     }, [
-      circle({
-        r: fontSize/1.8,
-        fill: "lightblue"
+      rect({
+        width: 1,
+        height: 10
       }),
       foreignObject({
-          x: -15
-          y: -15
+          // x: xOffset.map(xOffset => 1-(2*s.length) + xOffset),
+          x: xOffset.map(xOffset => 1-(2*s.length) + xOffset),
+          y: -13
         },
-        div({style: {
-          "font-size": `${20/lines}px`,
-        }}, s)
+        div({
+          style: {
+            "font-size": `10px`,
+            "font-family": "monospace"
+          }
+        }, s)
       )
-      // svgText({
-      //   y: fontSize/3,
-      //   "font-size": fontSize,
-      //   "text-anchor": "middle"
-      // }, value)
     ]
   )
-}
+})
 
 const visualizeStream = fgo(function*(stream, width, y) {
   const height = 100
   const allEvents = yield streamToList(stream)
+  
   yield g({ 
       transform: `translate(0, ${y})`
     }, [
       yield timeline(width, height, fontSize),
       list(
-        e => marble((1 + e.index) * fontSize * 2, height/2, e.value),
+        e => marble(
+          (1 + e.index) * fontSize * 2, 
+          height/2, 
+          e.value,
+          allEvents,
+          e.index
+        ),
         allEvents,
         x => x.index
       )
     ]);
 })
 
-const visualizePushBehavior = fgo(function*(stream, width, y) {
-
-  
-}
+const visualizePushBehavior = fgo(function*(behavior, width, y) {
+  const height = 100
+  const allEvents = yield streamToList(changes(stream))
+  const offsetXF = (yield liftNow(sample(transverse(timeFrom, allEvents))))
+    .map(([t, events]) => 
+      (i => i === event.length ? (t/30) : 0)
+  )
+  yield g({ 
+      transform: `translate(0, ${y})`
+    }, [
+      yield timeline(width, height, fontSize),
+      list(
+        e => marble(
+          (1 + e.index) * fontSize * 2, 
+          height/2, 
+          e.value,
+          allEvents,
+          e.index
+        ),
+        allEvents,
+        x => x.index
+      )
+    ]);
+})
 
 
 const s = sinkStream();
 let i = 0
-let values = [0, {a: 1}, {a: 1, b: "a really long string that keeps going"}, {a: 1, b:2, c:3, y: 4, d: 5, e: 6, f: 7}]
-setInterval(() => s.push(values[i++] || i), 1000)
+let values = [0, {a: 1}, ["sd", 3], null, undefined, "string" {a: 1, b: "a really long string that keeps going"}, {a: 1, b:2, c:4, y: 4, d: 5, e: 6, f: 7}]
+setInterval(() => s.push(i > values.length - 1 ? i++ : values[i++]), 1000)
 
 const b = sinkBehavior("starting");
 setInterval(() => b.push(i), 1000)
