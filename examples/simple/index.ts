@@ -71,7 +71,7 @@ const timeline = fgo(function*(width, height, fontSize) {
 
 const fontSize = 40
 const marble = (x, y, value) => {
-  const s = JSON.stringify(value, null, 2)
+  const s = JSON.stringify(value, null, '\n')
   const lines = s.split("\n").length
   return g({
       transform: `translate(${x}, ${y})`,
